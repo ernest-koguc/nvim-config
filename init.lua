@@ -150,13 +150,12 @@ require('lazy').setup({
     },
   },
 
+  -- THEME
   {
-    -- Theme inspired by Atom
-    'navarasu/onedark.nvim',
+    "folke/tokyonight.nvim",
+    lazy = false,
     priority = 1000,
-    config = function()
-      vim.cmd.colorscheme 'onedark'
-    end,
+    opts = {},
   },
 
   {
@@ -166,7 +165,7 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = false,
-        theme = 'onedark',
+        theme = 'tokyonight',
         component_separators = '|',
         section_separators = '',
       },
@@ -239,6 +238,7 @@ require('lazy').setup({
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
+vim.cmd.colorscheme 'tokyonight-night'
 
 -- Set highlight on search
 vim.o.hlsearch = false
