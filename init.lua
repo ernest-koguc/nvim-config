@@ -119,7 +119,7 @@ require('lazy').setup({
 
   -- THEME
   {
-    "folke/tokyonight.nvim",
+    "Mofiqul/vscode.nvim",
     lazy = false,
     priority = 1000,
     opts = {
@@ -134,7 +134,7 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = false,
-        theme = 'tokyonight',
+        theme = 'vscode',
         component_separators = '|',
         section_separators = '',
       },
@@ -166,7 +166,8 @@ require('lazy').setup({
         'nvim-telescope/telescope-fzf-native.nvim',
         -- NOTE: If you are having trouble with this installation,
         --       refer to the README for telescope-fzf-native for more instructions.
-        build = 'make',
+        minimum_files_characters = 3,
+        build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build',
         cond = function()
           return vim.fn.executable 'make' == 1
         end,
@@ -201,20 +202,40 @@ require('lazy').setup({
   --
   --    For additional information see: https://github.com/folke/lazy.nvim#-structuring-your-plugins
   -- { import = 'custom.plugins' },
+  -- Method signature 
+   {
+    "ray-x/lsp_signature.nvim",
+    event = "VeryLazy",
+    opts = {},
+    config = function(_, opts)
+        require'lsp_signature'.setup(opts)
+      end
+  },
+  {
+    "github/copilot.vim"
+  },
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" }
+  },
 }, {})
 
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
-vim.cmd.colorscheme 'tokyonight-night'
+vim.cmd.colorscheme 'vscode'
 
 -- Set highlight on search
 vim.o.hlsearch = false
 
--- Make line numbers default
+-- Configure line numbers 
 vim.wo.number = true
 vim.wo.relativenumber = true
+vim.api.nvim_set_hl(0, 'LineNrAbove', { fg='#C7B0E0', bold=true })
+vim.api.nvim_set_hl(0, 'LineNr', { fg='#9652D8', bold=true })
+vim.api.nvim_set_hl(0, 'LineNrBelow', { fg='#C7B0E0', bold=true })
 
 -- Enable mouse mode
 vim.o.mouse = 'a'
@@ -256,6 +277,7 @@ vim.keymap.set({ 'n', 'v' }, '<Space>', '<Nop>', { silent = true })
 -- Remap for dealing with word wrap
 vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
@@ -313,13 +335,50 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = '[S]earch [R]esume' })
 
 
+-- Harpoon setup
+local harpoon = require("harpoon")
+
+harpoon:setup()
+
+local conf = require("telescope.config").values
+local function toggle_telescope(harpoon_files)
+    local file_paths = {}
+    for _, item in ipairs(harpoon_files.items) do
+        table.insert(file_paths, item.value)
+    end
+
+    require("telescope.pickers").new({}, {
+        prompt_title = "Harpoon",
+        finder = require("telescope.finders").new_table({
+            results = file_paths,
+        }),
+        previewer = conf.file_previewer({}),
+        sorter = conf.generic_sorter({}),
+    }):find()
+end
+
+vim.keymap.set("n", "<leader>fs", function() toggle_telescope(harpoon:list()) end, { desc = "[F]ucking Harpoon [S]earch" })
+vim.keymap.set("n", "<leader>fp", function() harpoon:list():prev() end, { desc = "[F]ucking Harpoon Prev" })
+vim.keymap.set("n", "<leader>fo", function() harpoon:list():next() end, { desc = "[F]ucking Harpoon Next" })
+vim.keymap.set("n", "<leader>fa", function() harpoon:list():add() end, { desc = "[F]ucking Harpoon [A]dd" })
+vim.keymap.set("n", "<leader>fe", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { desc = "[F]ucking Harpoon M[E]nu" })
+
+
+
+-- Map github copilot accept to 
+vim.keymap.set('i', '<c-o>', 'copilot#Accept("\\<CR>")', {
+  expr = true,
+  replace_keycodes = false
+})
+vim.g.copilot_no_tab_map = true
+
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
 -- Defer Treesitter setup after first render to improve startup time of 'nvim {filename}'
 vim.defer_fn(function()
   require('nvim-treesitter.configs').setup {
     -- Add languages to be installed here that you want installed for treesitter
-    ensure_installed = { 'c_sharp', 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash' },
+    ensure_installed = { 'c_sharp', 'lua', 'javascript', 'typescript' },
 
     -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
     auto_install = false,
@@ -382,11 +441,29 @@ vim.defer_fn(function()
   }
 end, 0)
 
--- Diagnostic keymaps
+-- [[ Setup diagnostics ]]
+
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
+
+vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
+  vim.lsp.diagnostic.on_publish_diagnostics,
+  {
+    virtual_text = true,
+    signs = true,
+    update_in_insert = true,
+    underline = true,
+  }
+)
+
+
+-- Change the colors of relevant lsp types
+vim.api.nvim_set_hl(0, 'DiagnosticUnderlineError', { fg = '#C9463D', underline = true, bold = true })
+vim.api.nvim_set_hl(0, '@lsp.type.property.cs', { fg = 'white' })
+vim.api.nvim_set_hl(0, '@lsp.type.interface.cs', { fg = '#CBEAA1' })
+vim.api.nvim_set_hl(0, '@lsp.type.namespace.cs', { fg = 'white' })
 
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
@@ -466,6 +543,7 @@ local servers = {
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
   --
   tsserver = {},
+  --csharp_ls = {},
   omnisharp = {},
   lua_ls = {
     Lua = {
@@ -548,5 +626,3 @@ cmp.setup {
   },
 }
 
--- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et
