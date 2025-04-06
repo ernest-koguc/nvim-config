@@ -10,6 +10,9 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Always show tabline
+vim.o.showtabline = 2
+
 -- Install package manager
 --    https://github.com/folke/lazy.nvim
 --    `:help lazy.nvim.txt` for more info
@@ -215,11 +218,6 @@ require('lazy').setup({
     "github/copilot.vim"
   },
   {
-    "ThePrimeagen/harpoon",
-    branch = "harpoon2",
-    dependencies = { "nvim-lua/plenary.nvim" }
-  },
-  {
     "seblj/roslyn.nvim",
     event = "VeryLazy"
   },
@@ -227,8 +225,41 @@ require('lazy').setup({
     'tris203/rzls.nvim',
     event = "VeryLazy"
   },
+  {
+    'nanozuki/tabby.nvim',
+    dependencies = 'nvim-tree/nvim-web-devicons'
+  },
+  {
+      'windwp/nvim-autopairs',
+      event = "InsertEnter",
+      config = true,
+      opts = {}
+  }
 }, {})
 
+
+-- [[ Configure Tabby ]]
+require("tabby").setup({
+  preset = 'tab_only',
+  option = {
+    theme = {
+      fill = 'TabLineFill',       -- tabline background
+      head = 'TabLine',           -- head element highlight
+      current_tab = 'lualine_a_command',
+      tab = 'TabLine',            -- other tab label highlight
+      win = 'TabLine',            -- window highlight
+      tail = 'TabLine',           -- tail element highlight
+    },
+    nerdfont = true,              -- whether use nerdfont
+    lualine_theme = nil,          -- lualine theme name
+    buf_name = {
+      mode = 'unique'
+    },
+  },
+})
+
+vim.keymap.set("n", "<leader>tt", ":Tabby jump_to_tab<Enter>", { desc = "Jump [T]o [T]ab" })
+vim.keymap.set("n", "<leader>tn", ":tabnew<Enter>", { desc = "[T]ab [N]ew" })
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -342,37 +373,6 @@ vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc
 vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
 vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = '[S]earch [R]esume' })
 
-
--- Harpoon setup
-local harpoon = require("harpoon")
-
-harpoon:setup()
-
-local conf = require("telescope.config").values
-local function toggle_telescope(harpoon_files)
-    local file_paths = {}
-    for _, item in ipairs(harpoon_files.items) do
-        table.insert(file_paths, item.value)
-    end
-
-    require("telescope.pickers").new({}, {
-        prompt_title = "Harpoon",
-        finder = require("telescope.finders").new_table({
-            results = file_paths,
-        }),
-        previewer = conf.file_previewer({}),
-        sorter = conf.generic_sorter({}),
-    }):find()
-end
-
-vim.keymap.set("n", "<leader>fs", function() toggle_telescope(harpoon:list()) end, { desc = "[F]ucking Harpoon [S]earch" })
-vim.keymap.set("n", "<leader>fp", function() harpoon:list():prev() end, { desc = "[F]ucking Harpoon Prev" })
-vim.keymap.set("n", "<leader>fo", function() harpoon:list():next() end, { desc = "[F]ucking Harpoon Next" })
-vim.keymap.set("n", "<leader>fa", function() harpoon:list():add() end, { desc = "[F]ucking Harpoon [A]dd" })
-vim.keymap.set("n", "<leader>fe", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { desc = "[F]ucking Harpoon M[E]nu" })
-
-
-
 -- Map github copilot accept to 
 vim.keymap.set('i', '<c-o>', 'copilot#Accept("\\<CR>")', {
   expr = true,
@@ -475,7 +475,10 @@ vim.api.nvim_set_hl(0, '@lsp.type.property.cs', { fg = 'white' })
 vim.api.nvim_set_hl(0, '@lsp.type.interface.cs', { fg = '#CBEAA1' })
 vim.api.nvim_set_hl(0, '@lsp.type.namespace.cs', { fg = 'white' })
 vim.api.nvim_set_hl(0, '@variable.member.c_sharp', { fg = 'white' })
+vim.api.nvim_set_hl(0, '@property.c_sharp', { fg = 'white' })
+vim.api.nvim_set_hl(0, '@attribute.c_sharp', { link = '@type' })
 vim.api.nvim_set_hl(0, '@keyword.import.c_sharp', { link = '@keyword' })
+vim.api.nvim_set_hl(0, '@module.c_sharp', { fg = 'white' })
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
 local on_attach = function(_, bufnr)
@@ -502,6 +505,7 @@ local on_attach = function(_, bufnr)
   nmap('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
   nmap('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
   nmap('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
+  nmap('<leader>ff', vim.lsp.buf.format, '[F]ormat [F]ile')
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
@@ -595,17 +599,33 @@ mason_lspconfig.setup_handlers {
 }
 
 -- [[ Configure Roslyn]]
-
-require('roslyn').setup {
-  on_attach = on_attach,
-  capabilities = capabilities
-}
-
-require('rzls').setup {
-  on_attach = on_attach,
+require('roslyn').setup({
   capabilities = capabilities,
-  path = 'C:/Users/grati/AppData/Local/nvim-data/razor'
-}
+  ---@diagnostic disable-next-line: missing-fields
+  config = {
+    on_attach = on_attach,
+    settings = {
+      ["csharp|inlay_hints"] = {
+        csharp_enable_inlay_hints_for_implicit_object_creation = true,
+        csharp_enable_inlay_hints_for_implicit_variable_types = true,
+        csharp_enable_inlay_hints_for_lambda_parameter_types = true,
+        csharp_enable_inlay_hints_for_types = true,
+        dotnet_enable_inlay_hints_for_indexer_parameters = true,
+        dotnet_enable_inlay_hints_for_literal_parameters = true,
+        dotnet_enable_inlay_hints_for_object_creation_parameters = true,
+        dotnet_enable_inlay_hints_for_other_parameters = true,
+        dotnet_enable_inlay_hints_for_parameters = true,
+        dotnet_suppress_inlay_hints_for_parameters_that_differ_only_by_suffix = true,
+        dotnet_suppress_inlay_hints_for_parameters_that_match_argument_name = true,
+        dotnet_suppress_inlay_hints_for_parameters_that_match_method_intent = true,
+      },
+      ["csharp|code_lens"] = {
+        dotnet_enable_references_code_lens = true,
+      },
+    }
+  }
+})
+
 
 -- [[ Configure nvim-cmp ]]
 -- See `:help cmp`
@@ -654,4 +674,3 @@ cmp.setup {
     { name = 'luasnip' },
   },
 }
-
