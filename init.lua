@@ -16,7 +16,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -84,6 +84,12 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+
+vim.keymap.set('n', '<leader>e', function()
+  -- Open the diagnostics for the current buffer in a floating window
+  --  See `:help vim.diagnostic.open_float()`
+  vim.diagnostic.open_float(nil, { focusable = false, scope = 'line' })
+end, { desc = '[E]rror Diagnostics' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -344,7 +350,7 @@ require('lazy').setup({
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
-      vim.keymap.set('n', '<leader>fb', require('telescope').extensions.file_browser.file_browser, { desc = '[F]ile [B]rowser' })
+      vim.keymap.set('n', '<leader>fb', ':Telescope file_browser path=%:p:h select_buffer=true<CR>', { desc = '[F]ile [B]rowser' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
@@ -673,6 +679,7 @@ require('lazy').setup({
         '<leader>f',
         function()
           require('conform').format { async = true, lsp_format = 'fallback' }
+          print 'Formatting the buffer'
         end,
         mode = '',
         desc = '[F]ormat buffer',
@@ -684,7 +691,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, javascript = true, css = true, html = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -832,6 +839,10 @@ require('lazy').setup({
     config = function()
       require('vscode').setup { transparent = true }
       vim.cmd.colorscheme 'vscode'
+      vim.api.nvim_set_hl(0, 'LineNrAbove', { fg = '#cb8ff5', bold = true })
+      vim.api.nvim_set_hl(0, 'LineNr', { fg = '#9f29f0', bold = true })
+      vim.api.nvim_set_hl(0, 'CursorLineNr', { fg = '#9f29f0', bold = true })
+      vim.api.nvim_set_hl(0, 'LineNrBelow', { fg = '#cb8ff5', bold = true })
     end,
   },
   -- Highlight todo, notes, etc in comments
