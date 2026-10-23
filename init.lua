@@ -905,7 +905,7 @@ require('lazy').setup({
   require 'plugins.gitsigns',
   require 'plugins.tabby',
   require 'plugins.autotag',
-  require 'plugins.roslyn',
+  require 'plugins.easy-dotnet',
   require 'plugins.neogit',
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`

@@ -13,7 +13,7 @@ return {
         diffview = true, -- enable diffview integration
       },
     }
-    vim.keymap.set('n', '<leader>ng', function()
+    vim.keymap.set('n', '<leader>gg', function()
       neogit.open()
     end, { desc = 'Open Neogit' })
   end,
